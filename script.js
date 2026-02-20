@@ -1,4 +1,4 @@
-﻿const MODEL_URL = "https://teachablemachine.withgoogle.com/models/ovbVEoEWg/";
+﻿const MODEL_URL = "https://teachablemachine.withgoogle.com/models/O1DYbPuPe/";
 
 let model, webcam;
 let isRunning = false;
