@@ -1,62 +1,66 @@
-const URL = "https://teachablemachine.withgoogle.com/models/ovbVEoEWg/";
+﻿const MODEL_URL = "https://teachablemachine.withgoogle.com/models/ovbVEoEWg/";
 
-let model, webcam, maxPredictions;
+let model, webcam;
 let isRunning = false;
 
 const categoryIcons = {
-    "PAPEL": "📄", "PLASTICO": "🧴", "VIDRIO": "🍶",
-    "METAL": "🥫", "ORGANICO": "🍂", "ELECTRONICO": "💻",
-    "CARTON": "📦", "TEXTIL": "👕", "PELIGROSO": "⚠️"
+    "PAPEL": "ðŸ“„", "PLASTICO": "ðŸ§´", "VIDRIO": "ðŸ¶",
+    "METAL": "ðŸ¥«", "ORGANICO": "ðŸ‚", "ELECTRONICO": "ðŸ’»",
+    "CARTON": "ðŸ“¦", "TEXTIL": "ðŸ‘•", "PELIGROSO": "âš ï¸"
 };
 
-function getIcon(className) {
-    const key = Object.keys(categoryIcons).find(k =>
-        className.toUpperCase().includes(k)
-    );
-    return key ? categoryIcons[key] : "♻️";
+function getIcon(name) {
+    const key = Object.keys(categoryIcons).find(k => name.toUpperCase().includes(k));
+    return key ? categoryIcons[key] : "â™»ï¸";
 }
+
+function el(id) { return document.getElementById(id); }
+function show(id)         { const e = el(id); if (e) e.classList.add("visible"); }
+function hide(id)         { const e = el(id); if (e) e.classList.remove("visible"); }
+function addCls(id, cls)  { const e = el(id); if (e) e.classList.add(cls); }
+function remCls(id, cls)  { const e = el(id); if (e) e.classList.remove(cls); }
 
 async function init() {
     if (isRunning) return;
 
-    const btnStart = document.getElementById("btn-start");
-    const errorBox = document.getElementById("error-container");
+    const btnStart = el("btn-start");
+    const errorBox = el("error-container");
 
-    errorBox.classList.remove("visible");
-    errorBox.innerHTML = "";
-    btnStart.disabled = true;
-    btnStart.innerHTML = `Cargando modelo<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>`;
+    if (errorBox) { errorBox.classList.remove("visible"); errorBox.innerHTML = ""; }
+    if (btnStart) {
+        btnStart.disabled = true;
+        btnStart.innerHTML = `Cargando<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>`;
+    }
 
     try {
-        model = await tmImage.load(URL + "model.json", URL + "metadata.json");
-        maxPredictions = model.getTotalClasses();
+        model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
 
-        const container = document.getElementById("webcam-container");
-        container.innerHTML = "";
+        const container = el("webcam-container");
+        if (container) container.innerHTML = "";
 
         webcam = new tmImage.Webcam(520, 520, true);
         await webcam.setup();
         await webcam.play();
 
-        container.appendChild(webcam.canvas);
-        container.classList.add("visible");
+        if (container) {
+            container.appendChild(webcam.canvas);
+            container.classList.add("visible");
+        }
 
-        document.getElementById("placeholder").classList.add("hidden");
-        document.getElementById("scan-line").classList.add("visible");
-        document.getElementById("status-live").classList.add("visible");
-        document.getElementById("label-container").classList.add("visible");
-        document.getElementById("btn-stop").classList.add("visible");
+        addCls("placeholder", "hidden");
+        show("scan-line");
+        show("status-live");
+        show("label-container");
+        show("btn-stop");
 
-        btnStart.style.display = "none";
+        if (btnStart) btnStart.style.display = "none";
         isRunning = true;
-
         window.requestAnimationFrame(loop);
-    } catch (error) {
-        console.error(error);
-        errorBox.innerHTML = "⚠️ " + error.message;
-        errorBox.classList.add("visible");
-        btnStart.disabled = false;
-        btnStart.innerHTML = "Iniciar Cámara";
+
+    } catch (err) {
+        console.error(err);
+        if (errorBox) { errorBox.innerHTML = "âš ï¸ " + err.message; errorBox.classList.add("visible"); }
+        if (btnStart) { btnStart.disabled = false; btnStart.innerHTML = "Iniciar CÃ¡mara"; }
     }
 }
 
@@ -66,20 +70,21 @@ function stop() {
 
     if (webcam) { webcam.stop(); webcam = null; }
 
-    const container = document.getElementById("webcam-container");
-    container.innerHTML = "";
-    container.classList.remove("visible");
+    const container = el("webcam-container");
+    if (container) { container.innerHTML = ""; container.classList.remove("visible"); }
 
-    document.getElementById("placeholder").classList.remove("hidden");
-    document.getElementById("scan-line").classList.remove("visible");
-    document.getElementById("status-live").classList.remove("visible");
-    document.getElementById("label-container").classList.remove("visible");
-    document.getElementById("btn-stop").classList.remove("visible");
+    remCls("placeholder", "hidden");
+    hide("scan-line");
+    hide("status-live");
+    hide("label-container");
+    hide("btn-stop");
 
-    const btnStart = document.getElementById("btn-start");
-    btnStart.style.display = "block";
-    btnStart.disabled = false;
-    btnStart.innerHTML = "Iniciar Cámara";
+    const btnStart = el("btn-start");
+    if (btnStart) {
+        btnStart.style.display = "block";
+        btnStart.disabled = false;
+        btnStart.innerHTML = "Iniciar CÃ¡mara";
+    }
 }
 
 async function loop() {
@@ -93,122 +98,20 @@ async function predict() {
     if (!model || !webcam) return;
 
     const prediction = await model.predict(webcam.canvas);
-    const highest = prediction.reduce((prev, cur) =>
-        prev.probability > cur.probability ? prev : cur
-    );
+    const best = prediction.reduce((a, b) => a.probability > b.probability ? a : b);
+    const pct  = (best.probability * 100).toFixed(1);
 
-    const pct = (highest.probability * 100).toFixed(1);
-
-    document.getElementById("result-icon").textContent = getIcon(highest.className);
-    document.getElementById("result-class").textContent = highest.className;
-    document.getElementById("result-confidence").textContent = "Confianza: " + pct + "%";
-    document.getElementById("result-pct-big").innerHTML = pct + '<span>%</span>';
-    document.getElementById("confidence-fill").style.width = pct + "%";
+    const icon = el("result-icon");       if (icon) icon.textContent = getIcon(best.className);
+    const name = el("result-class");      if (name) name.textContent = best.className;
+    const conf = el("result-confidence"); if (conf) conf.textContent = "Confianza: " + pct + "%";
+    const big  = el("result-pct-big");   if (big)  big.innerHTML = pct + '<span>%</span>';
+    const bar  = el("confidence-fill");   if (bar)  bar.style.width = pct + "%";
 }
 
-
-const categoryIcons = {
-    "PAPEL": "📄", "PLASTICO": "🧴", "VIDRIO": "🍶",
-    "METAL": "🥫", "ORGANICO": "🍂", "ELECTRONICO": "💻",
-    "CARTON": "📦", "TEXTIL": "👕", "PELIGROSO": "⚠️"
-};
 
 function getIcon(className) {
     const key = Object.keys(categoryIcons).find(k =>
         className.toUpperCase().includes(k)
     );
-    return key ? categoryIcons[key] : "🗑️";
-}
-
-async function init() {
-    if (isRunning) return;
-
-    const btnStart = document.getElementById("btn-start");
-    const errorBox = document.getElementById("error-container");
-
-    errorBox.classList.remove("visible");
-    errorBox.innerHTML = "";
-    btnStart.disabled = true;
-    btnStart.innerHTML = `Cargando modelo<span class="loading-dot">.</span><span class="loading-dot">.</span><span class="loading-dot">.</span>`;
-
-    try {
-        const modelURL = URL + "model.json";
-        const metadataURL = URL + "metadata.json";
-
-        model = await tmImage.load(modelURL, metadataURL);
-        maxPredictions = model.getTotalClasses();
-
-        const webcamContainer = document.getElementById("webcam-container");
-        webcamContainer.innerHTML = "";
-
-        webcam = new tmImage.Webcam(320, 320, true);
-        await webcam.setup();
-        await webcam.play();
-
-        webcamContainer.appendChild(webcam.canvas);
-        webcamContainer.classList.add("visible");
-
-        document.getElementById("placeholder").classList.add("hidden");
-        document.getElementById("camera-header").classList.add("visible");
-        document.getElementById("label-container").classList.add("visible");
-        document.getElementById("btn-stop").classList.add("visible");
-
-        btnStart.style.display = "none";
-        isRunning = true;
-
-        window.requestAnimationFrame(loop);
-    } catch (error) {
-        console.error(error);
-        errorBox.innerHTML = "⚠️ " + error.message;
-        errorBox.classList.add("visible");
-        btnStart.disabled = false;
-        btnStart.innerHTML = "Iniciar Cámara";
-    }
-}
-
-function stop() {
-    if (!isRunning) return;
-    isRunning = false;
-
-    if (webcam) {
-        webcam.stop();
-        webcam = null;
-    }
-
-    const webcamContainer = document.getElementById("webcam-container");
-    webcamContainer.innerHTML = "";
-    webcamContainer.classList.remove("visible");
-
-    document.getElementById("placeholder").classList.remove("hidden");
-    document.getElementById("camera-header").classList.remove("visible");
-    document.getElementById("label-container").classList.remove("visible");
-    document.getElementById("btn-stop").classList.remove("visible");
-
-    const btnStart = document.getElementById("btn-start");
-    btnStart.style.display = "block";
-    btnStart.disabled = false;
-    btnStart.innerHTML = "Iniciar Cámara";
-}
-
-async function loop() {
-    if (!isRunning) return;
-    webcam.update();
-    await predict();
-    window.requestAnimationFrame(loop);
-}
-
-async function predict() {
-    if (!model || !webcam) return;
-
-    const prediction = await model.predict(webcam.canvas);
-    const highest = prediction.reduce((prev, current) =>
-        prev.probability > current.probability ? prev : current
-    );
-
-    const pct = (highest.probability * 100).toFixed(1);
-
-    document.getElementById("result-icon").textContent = getIcon(highest.className);
-    document.getElementById("result-class").textContent = highest.className;
-    document.getElementById("result-confidence").textContent = `Confianza: ${pct}%`;
-    document.getElementById("confidence-fill").style.width = `${pct}%`;
+    return key ? categoryIcons[key] : "â™»ï¸";
 }
