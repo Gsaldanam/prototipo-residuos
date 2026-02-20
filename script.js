@@ -3,20 +3,27 @@ const URL = "https://teachablemachine.withgoogle.com/models/ovbVEoEWg/";
 let model, webcam, labelContainer, maxPredictions;
 
 async function init() {
+    const errorContainer = document.getElementById("error-container");
+    errorContainer.innerHTML = "";
 
-    const modelURL = URL + "model.json";
-    const metadataURL = URL + "metadata.json";
+    try {
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
 
-    model = await tmImage.load(modelURL, metadataURL);
-    maxPredictions = model.getTotalClasses();
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
 
-    webcam = new tmImage.Webcam(300, 300, true);
-    await webcam.setup();
-    await webcam.play();
-    window.requestAnimationFrame(loop);
+        webcam = new tmImage.Webcam(300, 300, true);
+        await webcam.setup();
+        await webcam.play();
+        window.requestAnimationFrame(loop);
 
-    document.getElementById("webcam-container").appendChild(webcam.canvas);
-    labelContainer = document.getElementById("label-container");
+        document.getElementById("webcam-container").appendChild(webcam.canvas);
+        labelContainer = document.getElementById("label-container");
+    } catch (error) {
+        console.error(error);
+        errorContainer.innerHTML = "Error: " + error.message;
+    }
 }
 
 async function loop() {
