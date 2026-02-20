@@ -13,6 +13,110 @@ function getIcon(className) {
     const key = Object.keys(categoryIcons).find(k =>
         className.toUpperCase().includes(k)
     );
+    return key ? categoryIcons[key] : "♻️";
+}
+
+async function init() {
+    if (isRunning) return;
+
+    const btnStart = document.getElementById("btn-start");
+    const errorBox = document.getElementById("error-container");
+
+    errorBox.classList.remove("visible");
+    errorBox.innerHTML = "";
+    btnStart.disabled = true;
+    btnStart.innerHTML = `Cargando modelo<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>`;
+
+    try {
+        model = await tmImage.load(URL + "model.json", URL + "metadata.json");
+        maxPredictions = model.getTotalClasses();
+
+        const container = document.getElementById("webcam-container");
+        container.innerHTML = "";
+
+        webcam = new tmImage.Webcam(520, 520, true);
+        await webcam.setup();
+        await webcam.play();
+
+        container.appendChild(webcam.canvas);
+        container.classList.add("visible");
+
+        document.getElementById("placeholder").classList.add("hidden");
+        document.getElementById("scan-line").classList.add("visible");
+        document.getElementById("status-live").classList.add("visible");
+        document.getElementById("label-container").classList.add("visible");
+        document.getElementById("btn-stop").classList.add("visible");
+
+        btnStart.style.display = "none";
+        isRunning = true;
+
+        window.requestAnimationFrame(loop);
+    } catch (error) {
+        console.error(error);
+        errorBox.innerHTML = "⚠️ " + error.message;
+        errorBox.classList.add("visible");
+        btnStart.disabled = false;
+        btnStart.innerHTML = "Iniciar Cámara";
+    }
+}
+
+function stop() {
+    if (!isRunning) return;
+    isRunning = false;
+
+    if (webcam) { webcam.stop(); webcam = null; }
+
+    const container = document.getElementById("webcam-container");
+    container.innerHTML = "";
+    container.classList.remove("visible");
+
+    document.getElementById("placeholder").classList.remove("hidden");
+    document.getElementById("scan-line").classList.remove("visible");
+    document.getElementById("status-live").classList.remove("visible");
+    document.getElementById("label-container").classList.remove("visible");
+    document.getElementById("btn-stop").classList.remove("visible");
+
+    const btnStart = document.getElementById("btn-start");
+    btnStart.style.display = "block";
+    btnStart.disabled = false;
+    btnStart.innerHTML = "Iniciar Cámara";
+}
+
+async function loop() {
+    if (!isRunning) return;
+    webcam.update();
+    await predict();
+    window.requestAnimationFrame(loop);
+}
+
+async function predict() {
+    if (!model || !webcam) return;
+
+    const prediction = await model.predict(webcam.canvas);
+    const highest = prediction.reduce((prev, cur) =>
+        prev.probability > cur.probability ? prev : cur
+    );
+
+    const pct = (highest.probability * 100).toFixed(1);
+
+    document.getElementById("result-icon").textContent = getIcon(highest.className);
+    document.getElementById("result-class").textContent = highest.className;
+    document.getElementById("result-confidence").textContent = "Confianza: " + pct + "%";
+    document.getElementById("result-pct-big").innerHTML = pct + '<span>%</span>';
+    document.getElementById("confidence-fill").style.width = pct + "%";
+}
+
+
+const categoryIcons = {
+    "PAPEL": "📄", "PLASTICO": "🧴", "VIDRIO": "🍶",
+    "METAL": "🥫", "ORGANICO": "🍂", "ELECTRONICO": "💻",
+    "CARTON": "📦", "TEXTIL": "👕", "PELIGROSO": "⚠️"
+};
+
+function getIcon(className) {
+    const key = Object.keys(categoryIcons).find(k =>
+        className.toUpperCase().includes(k)
+    );
     return key ? categoryIcons[key] : "🗑️";
 }
 

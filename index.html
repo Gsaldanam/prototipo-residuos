@@ -4,7 +4,404 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Clasificador de Residuos</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            background: radial-gradient(ellipse at top, #1a1a1a 0%, #000000 60%, #0a0a0a 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 40px 20px 60px;
+            color: #f1f5f9;
+        }
+
+        /* ── HEADER ── */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .header .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(34,211,238,0.08);
+            border: 1px solid rgba(34,211,238,0.2);
+            border-radius: 99px;
+            padding: 4px 14px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #22d3ee;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+        }
+        .header h1 {
+            font-size: clamp(1.8rem, 4vw, 2.6rem);
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffffff 30%, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -1px;
+            line-height: 1.1;
+        }
+        .header p {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-top: 10px;
+        }
+
+        /* ── CAMERA AREA ── */
+        .camera-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+            width: 100%;
+            max-width: 560px;
+        }
+
+        .camera-frame {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+            max-width: 520px;
+            border-radius: 28px;
+            overflow: hidden;
+            background: #0d0d0d;
+            box-shadow:
+                0 0 0 1px rgba(255,255,255,0.06),
+                0 30px 80px rgba(0,0,0,0.8),
+                0 0 60px rgba(34,211,238,0.06);
+        }
+
+        /* Corner accents */
+        .corner {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .corner-tl { top: 14px; left: 14px; border-top: 2px solid #22d3ee; border-left: 2px solid #22d3ee; border-radius: 4px 0 0 0; }
+        .corner-tr { top: 14px; right: 14px; border-top: 2px solid #22d3ee; border-right: 2px solid #22d3ee; border-radius: 0 4px 0 0; }
+        .corner-bl { bottom: 14px; left: 14px; border-bottom: 2px solid #22d3ee; border-left: 2px solid #22d3ee; border-radius: 0 0 0 4px; }
+        .corner-br { bottom: 14px; right: 14px; border-bottom: 2px solid #22d3ee; border-right: 2px solid #22d3ee; border-radius: 0 0 4px 0; }
+
+        /* Scanline overlay */
+        .scanline {
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 3px,
+                rgba(0,0,0,0.07) 3px,
+                rgba(0,0,0,0.07) 4px
+            );
+            pointer-events: none;
+            z-index: 5;
+            border-radius: inherit;
+        }
+
+        #webcam-container {
+            width: 100%;
+            height: 100%;
+            display: none;
+        }
+        #webcam-container.visible { display: block; }
+        #webcam-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* Placeholder */
+        .placeholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+        }
+        .placeholder.hidden { display: none; }
+        .placeholder-ring {
+            width: 80px; height: 80px;
+            border-radius: 50%;
+            border: 2px dashed rgba(255,255,255,0.12);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 2rem;
+        }
+        .placeholder p {
+            font-size: 0.82rem;
+            color: #374151;
+            letter-spacing: 0.02em;
+        }
+
+        /* Scanning line animation */
+        .scan-line {
+            position: absolute;
+            left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #22d3ee, transparent);
+            box-shadow: 0 0 12px #22d3ee;
+            animation: scan 2.5s linear infinite;
+            display: none;
+            z-index: 6;
+        }
+        .scan-line.visible { display: block; }
+        @keyframes scan {
+            0%   { top: 0%; opacity: 0; }
+            5%   { opacity: 1; }
+            95%  { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        /* Status bar below camera */
+        .status-bar {
+            width: 100%;
+            max-width: 520px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 4px;
+            font-size: 0.75rem;
+            color: #374151;
+        }
+        .status-live {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            color: #22c55e;
+            font-weight: 600;
+        }
+        .status-live.visible { display: flex; }
+        .live-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 6px #22c55e;
+            animation: blink-dot 1.5s ease-in-out infinite;
+        }
+        @keyframes blink-dot {
+            0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+        }
+
+        /* ── RESULT CARD ── */
+        .result-card {
+            width: 100%;
+            max-width: 520px;
+            background: rgba(17,17,17,0.9);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 20px;
+            padding: 22px 24px;
+            margin-top: 16px;
+            display: none;
+            gap: 16px;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+        .result-card.visible { display: flex; }
+
+        .result-emoji {
+            font-size: 2.6rem;
+            flex-shrink: 0;
+            filter: drop-shadow(0 0 12px rgba(255,255,255,0.2));
+        }
+        .result-info { flex: 1; min-width: 0; }
+        .result-tag {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: #22d3ee;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+        .result-name {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: #ffffff;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .result-pct {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        .bar-track {
+            width: 100%;
+            height: 3px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 99px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        .bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #6366f1, #22d3ee);
+            border-radius: 99px;
+            transition: width 0.35s cubic-bezier(.4,0,.2,1);
+            width: 0%;
+        }
+        .result-pct-big {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #ffffff;
+            flex-shrink: 0;
+            text-align: right;
+        }
+        .result-pct-big span {
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: #475569;
+        }
+
+        /* ── BUTTONS ── */
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            max-width: 520px;
+            margin-top: 20px;
+        }
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 14px;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(.4,0,.2,1);
+            letter-spacing: 0.01em;
+        }
+        .btn-start {
+            background: linear-gradient(135deg, #22d3ee 0%, #6366f1 100%);
+            color: #000;
+            box-shadow: 0 4px 24px rgba(99,102,241,0.3), 0 0 0 1px rgba(34,211,238,0.2);
+        }
+        .btn-start:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(99,102,241,0.5), 0 0 0 1px rgba(34,211,238,0.3); }
+        .btn-start:active { transform: translateY(0); }
+        .btn-start:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .btn-stop {
+            background: transparent;
+            border: 1px solid rgba(239,68,68,0.3);
+            color: #f87171;
+            display: none;
+        }
+        .btn-stop:hover { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.5); }
+        .btn-stop.visible { display: block; }
+
+        /* ── ERROR ── */
+        .error-box {
+            width: 100%;
+            max-width: 520px;
+            background: rgba(239,68,68,0.08);
+            border: 1px solid rgba(239,68,68,0.25);
+            border-radius: 12px;
+            padding: 14px 18px;
+            color: #fca5a5;
+            font-size: 0.82rem;
+            display: none;
+            margin-top: 10px;
+        }
+        .error-box.visible { display: block; }
+
+        /* ── Loading dots ── */
+        .dot { display: inline-block; animation: blink 1.2s infinite; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes blink { 0%,80%,100% { opacity:0.2; } 40% { opacity:1; } }
+
+        /* ── Footer ── */
+        .footer {
+            margin-top: 48px;
+            font-size: 0.72rem;
+            color: #1e293b;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="badge">♻️ &nbsp; IA en tiempo real</div>
+        <h1>Clasificador de<br>Residuos</h1>
+        <p>Apunta la cámara hacia un objeto para identificar su tipo de residuo</p>
+    </div>
+
+    <div class="camera-area">
+
+        <!-- CAMERA FRAME -->
+        <div class="camera-frame">
+            <div class="corner corner-tl"></div>
+            <div class="corner corner-tr"></div>
+            <div class="corner corner-bl"></div>
+            <div class="corner corner-br"></div>
+            <div class="scanline"></div>
+            <div class="scan-line" id="scan-line"></div>
+
+            <div class="placeholder" id="placeholder">
+                <div class="placeholder-ring">📷</div>
+                <p>La cámara aparecerá aquí</p>
+            </div>
+
+            <div id="webcam-container"></div>
+        </div>
+
+        <!-- STATUS BAR -->
+        <div class="status-bar">
+            <div class="status-live" id="status-live">
+                <div class="live-dot"></div>
+                EN VIVO
+            </div>
+            <div></div>
+        </div>
+
+        <!-- RESULT CARD -->
+        <div class="result-card" id="label-container">
+            <div class="result-emoji" id="result-icon">🗑️</div>
+            <div class="result-info">
+                <div class="result-tag">Residuo detectado</div>
+                <div class="result-name" id="result-class">—</div>
+                <div class="result-pct" id="result-confidence">Confianza: —</div>
+                <div class="bar-track"><div class="bar-fill" id="confidence-fill"></div></div>
+            </div>
+            <div class="result-pct-big" id="result-pct-big">—<span>%</span></div>
+        </div>
+
+        <!-- ERROR -->
+        <div class="error-box" id="error-container"></div>
+
+        <!-- BUTTONS -->
+        <div class="actions">
+            <button class="btn btn-start" id="btn-start" onclick="init()">Iniciar Cámara</button>
+            <button class="btn btn-stop" id="btn-stop" onclick="stop()">Detener</button>
+        </div>
+
+    </div>
+
+    <div class="footer">Powered by TensorFlow.js &amp; Teachable Machine</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
