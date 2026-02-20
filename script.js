@@ -1,10 +1,31 @@
 const URL = "https://teachablemachine.withgoogle.com/models/ovbVEoEWg/";
 
-let model, webcam, labelContainer, maxPredictions;
+let model, webcam, maxPredictions;
+let isRunning = false;
+
+const categoryIcons = {
+    "PAPEL": "📄", "PLASTICO": "🧴", "VIDRIO": "🍶",
+    "METAL": "🥫", "ORGANICO": "🍂", "ELECTRONICO": "💻",
+    "CARTON": "📦", "TEXTIL": "👕", "PELIGROSO": "⚠️"
+};
+
+function getIcon(className) {
+    const key = Object.keys(categoryIcons).find(k =>
+        className.toUpperCase().includes(k)
+    );
+    return key ? categoryIcons[key] : "🗑️";
+}
 
 async function init() {
-    const errorContainer = document.getElementById("error-container");
-    errorContainer.innerHTML = "";
+    if (isRunning) return;
+
+    const btnStart = document.getElementById("btn-start");
+    const errorBox = document.getElementById("error-container");
+
+    errorBox.classList.remove("visible");
+    errorBox.innerHTML = "";
+    btnStart.disabled = true;
+    btnStart.innerHTML = `Cargando modelo<span class="loading-dot">.</span><span class="loading-dot">.</span><span class="loading-dot">.</span>`;
 
     try {
         const modelURL = URL + "model.json";
@@ -13,36 +34,77 @@ async function init() {
         model = await tmImage.load(modelURL, metadataURL);
         maxPredictions = model.getTotalClasses();
 
-        webcam = new tmImage.Webcam(300, 300, true);
+        const webcamContainer = document.getElementById("webcam-container");
+        webcamContainer.innerHTML = "";
+
+        webcam = new tmImage.Webcam(320, 320, true);
         await webcam.setup();
         await webcam.play();
-        window.requestAnimationFrame(loop);
 
-        document.getElementById("webcam-container").appendChild(webcam.canvas);
-        labelContainer = document.getElementById("label-container");
+        webcamContainer.appendChild(webcam.canvas);
+        webcamContainer.classList.add("visible");
+
+        document.getElementById("placeholder").classList.add("hidden");
+        document.getElementById("camera-header").classList.add("visible");
+        document.getElementById("label-container").classList.add("visible");
+        document.getElementById("btn-stop").classList.add("visible");
+
+        btnStart.style.display = "none";
+        isRunning = true;
+
+        window.requestAnimationFrame(loop);
     } catch (error) {
         console.error(error);
-        errorContainer.innerHTML = "Error: " + error.message;
+        errorBox.innerHTML = "⚠️ " + error.message;
+        errorBox.classList.add("visible");
+        btnStart.disabled = false;
+        btnStart.innerHTML = "Iniciar Cámara";
     }
 }
 
+function stop() {
+    if (!isRunning) return;
+    isRunning = false;
+
+    if (webcam) {
+        webcam.stop();
+        webcam = null;
+    }
+
+    const webcamContainer = document.getElementById("webcam-container");
+    webcamContainer.innerHTML = "";
+    webcamContainer.classList.remove("visible");
+
+    document.getElementById("placeholder").classList.remove("hidden");
+    document.getElementById("camera-header").classList.remove("visible");
+    document.getElementById("label-container").classList.remove("visible");
+    document.getElementById("btn-stop").classList.remove("visible");
+
+    const btnStart = document.getElementById("btn-start");
+    btnStart.style.display = "block";
+    btnStart.disabled = false;
+    btnStart.innerHTML = "Iniciar Cámara";
+}
+
 async function loop() {
+    if (!isRunning) return;
     webcam.update();
     await predict();
     window.requestAnimationFrame(loop);
 }
 
 async function predict() {
-    const prediction = await model.predict(webcam.canvas);
+    if (!model || !webcam) return;
 
-    let highest = prediction.reduce((prev, current) =>
+    const prediction = await model.predict(webcam.canvas);
+    const highest = prediction.reduce((prev, current) =>
         prev.probability > current.probability ? prev : current
     );
 
-    labelContainer.innerHTML =
-        "Residuo detectado: " +
-        highest.className +
-        " (" +
-        (highest.probability * 100).toFixed(2) +
-        "%)";
+    const pct = (highest.probability * 100).toFixed(1);
+
+    document.getElementById("result-icon").textContent = getIcon(highest.className);
+    document.getElementById("result-class").textContent = highest.className;
+    document.getElementById("result-confidence").textContent = `Confianza: ${pct}%`;
+    document.getElementById("confidence-fill").style.width = `${pct}%`;
 }
