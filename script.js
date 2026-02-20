@@ -4,21 +4,27 @@ let model, webcam;
 let isRunning = false;
 
 const categoryIcons = {
-    "PAPEL": "ðŸ“„", "PLASTICO": "ðŸ§´", "VIDRIO": "ðŸ¶",
-    "METAL": "ðŸ¥«", "ORGANICO": "ðŸ‚", "ELECTRONICO": "ðŸ’»",
-    "CARTON": "ðŸ“¦", "TEXTIL": "ðŸ‘•", "PELIGROSO": "âš ï¸"
+    "PAPEL":       "\uD83D\uDCC4",
+    "PLASTICO":    "\uD83E\uDDF4",
+    "VIDRIO":      "\uD83C\uDF76",
+    "METAL":       "\uD83E\uDD6B",
+    "ORGANICO":    "\uD83C\uDF42",
+    "ELECTRONICO": "\uD83D\uDCBB",
+    "CARTON":      "\uD83D\uDCE6",
+    "TEXTIL":      "\uD83D\uDC55",
+    "PELIGROSO":   "\u26A0\uFE0F"
 };
 
 function getIcon(name) {
     const key = Object.keys(categoryIcons).find(k => name.toUpperCase().includes(k));
-    return key ? categoryIcons[key] : "â™»ï¸";
+    return key ? categoryIcons[key] : "\u267B\uFE0F";
 }
 
 function el(id) { return document.getElementById(id); }
-function show(id)         { const e = el(id); if (e) e.classList.add("visible"); }
-function hide(id)         { const e = el(id); if (e) e.classList.remove("visible"); }
-function addCls(id, cls)  { const e = el(id); if (e) e.classList.add(cls); }
-function remCls(id, cls)  { const e = el(id); if (e) e.classList.remove(cls); }
+function show(id)        { const e = el(id); if (e) e.classList.add("visible"); }
+function hide(id)        { const e = el(id); if (e) e.classList.remove("visible"); }
+function addCls(id, cls) { const e = el(id); if (e) e.classList.add(cls); }
+function remCls(id, cls) { const e = el(id); if (e) e.classList.remove(cls); }
 
 async function init() {
     if (isRunning) return;
@@ -29,7 +35,7 @@ async function init() {
     if (errorBox) { errorBox.classList.remove("visible"); errorBox.innerHTML = ""; }
     if (btnStart) {
         btnStart.disabled = true;
-        btnStart.innerHTML = `Cargando<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>`;
+        btnStart.innerHTML = 'Cargando<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>';
     }
 
     try {
@@ -59,8 +65,8 @@ async function init() {
 
     } catch (err) {
         console.error(err);
-        if (errorBox) { errorBox.innerHTML = "âš ï¸ " + err.message; errorBox.classList.add("visible"); }
-        if (btnStart) { btnStart.disabled = false; btnStart.innerHTML = "Iniciar CÃ¡mara"; }
+        if (errorBox) { errorBox.innerHTML = "\u26A0\uFE0F " + err.message; errorBox.classList.add("visible"); }
+        if (btnStart) { btnStart.disabled = false; btnStart.innerHTML = "Iniciar C\u00E1mara"; }
     }
 }
 
@@ -83,7 +89,7 @@ function stop() {
     if (btnStart) {
         btnStart.style.display = "block";
         btnStart.disabled = false;
-        btnStart.innerHTML = "Iniciar CÃ¡mara";
+        btnStart.innerHTML = "Iniciar C\u00E1mara";
     }
 }
 
@@ -106,12 +112,4 @@ async function predict() {
     const conf = el("result-confidence"); if (conf) conf.textContent = "Confianza: " + pct + "%";
     const big  = el("result-pct-big");   if (big)  big.innerHTML = pct + '<span>%</span>';
     const bar  = el("confidence-fill");   if (bar)  bar.style.width = pct + "%";
-}
-
-
-function getIcon(className) {
-    const key = Object.keys(categoryIcons).find(k =>
-        className.toUpperCase().includes(k)
-    );
-    return key ? categoryIcons[key] : "â™»ï¸";
 }
