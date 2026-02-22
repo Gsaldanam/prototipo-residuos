@@ -5,18 +5,26 @@ let isRunning = false;
 
 const categoryIcons = {
     "PAPEL":       "\uD83D\uDCC4",
-    "PLASTICO":    "\uD83E\uDDF4",
+    "PLÁSTICO":    "\uD83E\uDDF4",
     "VIDRIO":      "\uD83C\uDF76",
-    "METAL":       "\uD83E\uDD6B",
-    "ORGANICO":    "\uD83C\uDF42",
-    "ELECTRONICO": "\uD83D\uDCBB",
-    "CARTON":      "\uD83D\uDCE6",
+    "METÁLICO":    "\uD83E\uDD6B",
+    "ORGÁNICO":    "\uD83C\uDF42",
+    "ELECTRÓNICO": "\uD83D\uDCBB",
+    "CARTÓN":      "\uD83D\uDCE6",
     "TEXTIL":      "\uD83D\uDC55",
     "PELIGROSO":   "\u26A0\uFE0F"
 };
 
+function normalizeText(text) {
+    return text
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toUpperCase();
+}
+
 function getIcon(name) {
-    const key = Object.keys(categoryIcons).find(k => name.toUpperCase().includes(k));
+    const normalizedName = normalizeText(name);
+    const key = Object.keys(categoryIcons).find(k => normalizedName.includes(normalizeText(k)));
     return key ? categoryIcons[key] : "\u267B\uFE0F";
 }
 
