@@ -22,6 +22,21 @@ function normalizeText(text) {
         .toUpperCase();
 }
 
+function formatLabel(name) {
+    const normalizedName = normalizeText(name);
+    const displayLabels = {
+        "ORGANICO": "ORGÁNICO",
+        "ORGANICOS": "ORGÁNICOS",
+        "PLASTICO": "PLÁSTICO",
+        "METALICO": "METÁLICO",
+        "ELECTRONICO": "ELECTRÓNICO",
+        "CARTON": "CARTÓN",
+        "NO RECICLABLE": "NO RECICLABLE"
+    };
+
+    return displayLabels[normalizedName] || name;
+}
+
 function getIcon(name) {
     const normalizedName = normalizeText(name);
     const key = Object.keys(categoryIcons).find(k => normalizedName.includes(normalizeText(k)));
@@ -114,9 +129,10 @@ async function predict() {
     const prediction = await model.predict(webcam.canvas);
     const best = prediction.reduce((a, b) => a.probability > b.probability ? a : b);
     const pct  = (best.probability * 100).toFixed(1);
+    const displayName = formatLabel(best.className);
 
-    const icon = el("result-icon");       if (icon) icon.textContent = getIcon(best.className);
-    const name = el("result-class");      if (name) name.textContent = best.className;
+    const icon = el("result-icon");       if (icon) icon.textContent = getIcon(displayName);
+    const name = el("result-class");      if (name) name.textContent = displayName;
     const conf = el("result-confidence"); if (conf) conf.textContent = "Confianza: " + pct + "%";
     const big  = el("result-pct-big");   if (big)  big.innerHTML = pct + '<span>%</span>';
     const bar  = el("confidence-fill");   if (bar)  bar.style.width = pct + "%";
